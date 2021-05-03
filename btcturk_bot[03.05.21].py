@@ -75,7 +75,7 @@ def lrRanger(xV, yV, deger):
 
 my_client = Client()
 
-fig = plt.figure(figsize=(20, 10))
+fig = plt.figure(figsize=(13, 10))
 nrowsNumber = 2
 ncolsNumber = 2
 gs = gridspec.GridSpec(nrows=nrowsNumber, ncols=ncolsNumber, height_ratios=[2,2],width_ratios=[2,2])
@@ -114,7 +114,8 @@ proccesTimeList = [] # get, # draw
 
 bitconType = "ETH_TRY"
 
-def karzararAlan(alimFnc, satisFnc, xValues, islemMiktarı = 1000, karYuzdesi= 1):
+def karzararAlan(alimFnc, satisFnc, xValues):
+    islemMiktarı = 1000; karYuzdesi= 0.3
     fy = lambda b0, b1, x: b0 + b1*x
     KomisyonYuzdesi = 0.18
     fcommi = lambda miktar: miktar*(KomisyonYuzdesi/100)
@@ -124,16 +125,19 @@ def karzararAlan(alimFnc, satisFnc, xValues, islemMiktarı = 1000, karYuzdesi= 1
     zararAreaValues = [[],[]]
     syc1 = 0
     syc2 = 0
+    maxKar = 0
     for x in xValues:
         satY = fy(satisFnc[0],satisFnc[1] ,x)
         alY = fy(alimFnc[0],alimFnc[1] ,x)
-        alis = alY/(islemMiktarı - fcommi(islemMiktarı)) # etc 
-        satis = fcommi((alis*satY)) + (alis*satY)
+        alis = (islemMiktarı - fcommi(islemMiktarı))/alY # etc 
+        satis = (alis*satY) -fcommi((alis*satY))
+        istenilenKarMiktari = (islemMiktarı*(karYuzdesi/100))
+        if maxKar < (satis - islemMiktarı):
+            maxKar = satis - islemMiktarı
         # ilkKaredilebiliraralıkDeğeri = ikad
         ikad = 0
         # ilkZararEdilenaralıkDeğeri = izad
         izad = 0
-        print(f"karOranı: {(((satis/islemMiktarı)-1)*100)}")
         if (((satis/islemMiktarı)-1)*100) >= karYuzdesi:
             # karYüzdesini karşılayan alan noktaları
             if syc1 == 0:
@@ -146,11 +150,13 @@ def karzararAlan(alimFnc, satisFnc, xValues, islemMiktarı = 1000, karYuzdesi= 1
                 else:
                     karAreaValues[0] = [alXY, satXY]
             else:
-                if (satY-alY) >= ikad:
-                    ikad = satY - alY
-                    karAreaValues[-1] = [alXY, satXY]  
+                alXY, satXY= (x, alY), (x, satY)
+                karAreaValues[-1] = [alXY, satXY] 
+                # if (satY-alY) >= ikad:
+                #     ikad = satY - alY
+                     
         else:
-             if syc2 == 0:
+            if syc2 == 0:
                 syc2 += 1
                 syc1 = 0
                 izad = satY - alY
@@ -159,35 +165,39 @@ def karzararAlan(alimFnc, satisFnc, xValues, islemMiktarı = 1000, karYuzdesi= 1
                     zararAreaValues[0] = karAreaValues[-1]
                 else:
                     zararAreaValues[0] = [alXY, satXY]
-             else:
-                if (satY-alY) >= izad:
-                    izad = satY - alY
-                    zararAreaValues[-1] = [alXY, satXY]
+            else:
+                alXY, satXY= (x, alY), (x, satY)
+                zararAreaValues[-1] = [alXY, satXY]
+                # if (satY-alY) >= izad:
+                #     izad = satY - alY
+    
+    print("maxKar = ", maxKar)         
     return karAreaValues, zararAreaValues
              
-def kesisiyorMu(fnc1, fnc2, x_dataInput, y_dataDraw):
+def kesisiyorMu(fnc1, fnc2, x_dataInput, y_dataDraw, grafik):
     # grafik alanı içerisinde kesişiyor mu?
-    f1b0, f1b1 = fnc1[0], fnc1[1]
-    f2b0, f2b1 = fnc2[0], fnc2[1]
-    # yf1 = f1b0 + f1b1*x = 0
-    xf1 = (-f1b0)/f1b1
-    xf2 = (-f2b0)/f2b1
-    finalX = xf1+xf2
-    # yf1 = f1b0 + f1b1*xf2
-    # yf2 = f2b0 + f2b1*xf1
-    # if yf1 == yf2:
-    #     finalY = yf1
-        
+    xf, xl = x_dataInput[0], x_dataInput[-1]
+    fy = lambda b0, b1, x: b0 + b1*x
+    # satis [AB], alis[CD]
+    aX, bX = xf, xl
+    aY, bY = fy(fnc1[0],fnc1[1], xf), fy(fnc1[0],fnc1[1], xl)
+    cX, dX = xf, xl
+    cY, dY = fy(fnc2[0],fnc2[1], xf), fy(fnc2[0],fnc2[1], xl)
+    t = ((dY - cY)*(cX - aX) - (cY - aY)*(dX - cY))/((dY - cY)*(bX - aX) - (bY - aY)*(dX - cY))
+    eX = aX + (bX - aX)*t
+    eY = aY + (bY - aY)*t
     resultX = False
-    # resultY = False
+    resultY = False
     sonuc = False
-    if (x_dataInput[0] < finalX) and (finalX < x_dataInput[-1]):
+    if (x_dataInput[0] < eX) and (eX < x_dataInput[-1]):
         resultX = True
-    # if (y_dataDraw[0] < finalY) and (finalY < y_dataDraw[-1]):
-    #     resultY = True
-    # if (resultX and resultY):
-    #     sonuc = True
-    return resultX
+    if (y_dataDraw[0] < eY) and (eY < y_dataDraw[-1]):
+        resultY = True
+    if (resultX or resultY):
+        sonuc = True
+        print(eX, eY)
+        grafik.plot_date(datetime.fromtimestamp(eX), eY)
+    return sonuc
     
     
     
@@ -217,11 +227,6 @@ def draw(grafik, x_data, y_data,y):
     global startTime, syc
     grafikBilgileri = grafikDict[grafik]
     grafik.cla()
-    # LineN = grafik.plot_date([], [], "-")
-    # LineLR = grafik.plot_date([], [], "-")
-    # yatayLineN = grafik.plot_date([], [], "-")
-    # lineUP = grafik.plot_date([], [], "-")
-    # lineBT = grafik.plot_date([], [], "-")
     
     sure = grafikBilgileri[0]
     x_dataDraw = x_data
@@ -259,7 +264,7 @@ def draw(grafik, x_data, y_data,y):
         # Anlık Gösterge cizgisi
         grafik.plot_date(yatayX, yatayY, "-")
          
-        altFnc, satFnc = lrRanger(x_dataInput,y_dataDraw,2)
+        satFnc, altFnc = lrRanger(x_dataInput,y_dataDraw,3)
         # herhangi bir değer isnan ise çalışmasın = isnan
         isNanlist = altFnc[0], altFnc[1], satFnc[0], satFnc[1]
         isnan = float("nan")
@@ -277,15 +282,16 @@ def draw(grafik, x_data, y_data,y):
             satYDegerleri = [fy(satFnc[0],satFnc[1], x_dataInput[0]), 
                               fy(satFnc[0],satFnc[1], x_dataInput[-1])]
                 
-            ## üst satma çizgisi    
-            grafik.plot_date(xDegerleri, alYDegerleri, "-")    
+            ## alt satn alma  çizgisi    
+            grafik.plot_date(xDegerleri, alYDegerleri, "-",color="red")    
             ## alt satın alma çizgisi
-            grafik.plot_date(xDegerleri, satYDegerleri, "-") 
+            grafik.plot_date(xDegerleri, satYDegerleri, "-", color="green") 
             # y1 , y2 = alYDegerleri, satYDegerleri
             # xVboth = [x_dataDraw[0], x_dataDraw[-1]]
             y1 , y2 = np.array(alYDegerleri), np.array(satYDegerleri)
             xVboth = np.array([x_dataDraw[0], x_dataDraw[-1]])
-            if not kesisiyorMu(altFnc, satFnc,x_dataInput,y_dataDraw):
+            #not kesisiyorMu(altFnc, satFnc,x_dataInput,y_dataDraw, grafik)
+            if True:
                 karAreaValues, zararAreaValues = karzararAlan(altFnc, satFnc, x_dataInput)
                 if (karAreaValues[0] and karAreaValues[-1]):
                     # ilk çigi [(x1, y1),(x2, y2)], son çizgi [(x1, y1),(x2, y2)]
@@ -294,14 +300,15 @@ def draw(grafik, x_data, y_data,y):
                     # rs[-1][0][0] = rs[-1][1][0]
                     y1 = np.array([karAreaValues[0][0][1], karAreaValues[-1][0][1]])
                     y2 = np.array([karAreaValues[0][1][1], karAreaValues[-1][1][1]])
-                    xForBoth = np.array(
+
+                    xForBoth = np.array([
                         datetime.fromtimestamp(karAreaValues[0][0][0]), 
-                        datetime.fromtimestamp(karAreaValues[-1][0][0])
+                        datetime.fromtimestamp(karAreaValues[-1][0][0])]
                         )
                     grafik.fill_between(xForBoth, 
                                         y1 , 
                                         y2, 
-                                        where=(y1 > y2), 
+                                        where=(y1 < y2), 
                                         color='green', 
                                         alpha=0.3, 
                                         interpolate=True
@@ -309,23 +316,25 @@ def draw(grafik, x_data, y_data,y):
                     grafik.fill_between(xForBoth, 
                                         y1 , 
                                         y2, 
-                                        where=(y1 < y2),  
+                                        where=(y1 > y2),  
                                         facecolor="none", 
                                         hatch="X", edgecolor="b", 
                                         linewidth=0.0, alpha=0.3, 
                                         interpolate=True)
                     
                 if (zararAreaValues[0] and zararAreaValues[-1]):
+
+
                     y1 = np.array([zararAreaValues[0][0][1], zararAreaValues[-1][0][1]])
                     y2 = np.array([zararAreaValues[0][1][1], zararAreaValues[-1][1][1]])
-                    xForBoth = np.array(
+                    xForBoth = np.array([
                         datetime.fromtimestamp(zararAreaValues[0][0][0]), 
-                        datetime.fromtimestamp(zararAreaValues[-1][0][0])
+                        datetime.fromtimestamp(zararAreaValues[-1][1][0])]
                         )
                     grafik.fill_between(xForBoth, 
                                         y1 , 
                                         y2, 
-                                        where=(y1 > y2), 
+                                        where=(y1 < y2), 
                                         color='red', 
                                         alpha=0.3, 
                                         interpolate=True
@@ -333,14 +342,15 @@ def draw(grafik, x_data, y_data,y):
                     grafik.fill_between(xForBoth, 
                                         y1 ,
                                         y2, 
-                                        where=(y1 < y2), 
+                                        where=(y1 > y2), 
                                         facecolor="none",
                                         hatch="X", 
                                         edgecolor="b", 
                                         linewidth=0.0, 
                                         alpha=0.3, 
                                         interpolate=True)
-                    
+            else:
+                print("kesisiyor...")        
         
         
         
@@ -394,7 +404,14 @@ def update(frame):
 # /api/v2/ticker requests are limited to 10 requests per 100 miliseconds. 100/10 = 10 maks request 
 
 animation = FuncAnimation(fig, update, interval=10)
-
+plt.subplots_adjust(
+                    top=0.965,
+                    bottom=0.035,
+                    left=0.055,
+                    right=0.975,
+                    hspace=0.2,
+                    wspace=0.14
+                    )
 
 plt.show()
 
